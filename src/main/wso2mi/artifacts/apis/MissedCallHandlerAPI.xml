@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api context="/api/v1" name="MissedCallHandlerAPI" xmlns="http://ws.apache.org/ns/synapse">
+    <resource methods="POST" uri-template="/missed-call-handler">
+        <inSequence>
+            <!-- Extract mobile number from request payload -->
+            <property name="mobileNo" expression="json-eval($.mobileNo)" scope="default"/>
+            <log category="INFO">
+                <message>Missed call received from: ${props.synapse.mobileNo}</message>
+            </log>
+
+            <!-- Step 1: Get customer by mobile number -->
+            <dataServiceCall serviceName="InsuranceDataBase">
+                <source type="inline"/>
+                <operations type="single">
+                    <operation name="getClientByMobile">
+                        <param name="phone" expression="get-property('mobileNo')"/>
+                    </operation>
+                </operations>
+                <target type="body"/>
+            </dataServiceCall>
+
+            <!-- If mobile not registered, return failure response -->
+            <filter xpath="${not(exists(payload.customers.customer))}">
+                <then>
+                    <log category="INFO">
+                        <message>Mobile number not registered: ${props.synapse.mobileNo}</message>
+                    </log>
+                    <payloadFactory media-type="json" template-type="default">
+                        <format>{
+                            "status": "failed",
+                            "message": "Please register for this service by dialing 07******** or visit the nearest branch."
+                            }</format>
+                    </payloadFactory>
+                    <respond/>
+                </then>
+            </filter>
+
+            <!-- Store customer ID as property for dataServiceCall -->
+            <property name="customerId" expression="json-eval($.customers.customer.customer_id)" scope="default"/>
+            <log category="INFO">
+                <message>Customer found - ID: ${props.synapse.customerId}</message>
+            </log>
+
+            <!-- Step 2: Get active policies by customer ID -->
+            <dataServiceCall serviceName="InsuranceDataBase">
+                <source type="inline"/>
+                <operations type="single">
+                    <operation name="getPolicyByCustomerId">
+                        <param name="customer_id" expression="get-property('customerId')"/>
+                    </operation>
+                </operations>
+                <target type="body"/>
+            </dataServiceCall>
+
+            <!-- If no active policies found, return failure response -->
+            <filter xpath="${not(exists(payload.policies.policy))}">
+                <then>
+                    <log category="INFO">
+                        <message>No active policies found for customer: ${props.synapse.customerId}</message>
+                    </log>
+                    <payloadFactory media-type="json" template-type="default">
+                        <format>{
+                            "status": "failed",
+                            "message": "You have no active policies with Company. Please dial 07******** for more information or visit the nearest branch."
+                            }</format>
+                    </payloadFactory>
+                    <respond/>
+                </then>
+            </filter>
+
+            <!-- Normalise policies to always be a JSON array in the payload body -->
+            <filter xpath="${isArray(payload.policies.policy)}">
+                <then>
+                    <payloadFactory media-type="json">
+                        <format>{"policies": ${payload.policies.policy}}</format>
+                    </payloadFactory>
+                </then>
+                <else>
+                    <payloadFactory media-type="json">
+                        <format>{"policies": [${payload.policies.policy}]}</format>
+                    </payloadFactory>
+                </else>
+            </filter>
+            <!-- Step 3: For each policy retrieve the latest payment and build the SMS message.
+                 The new foreach automatically aggregates each iteration's final payload
+                 into a JSON array stored in vars.messages. -->
+            <foreach collection="${payload.policies}" parallel-execution="false" update-original="false" target-variable="messages" result-content-type="JSON" continue-without-aggregation="false">
+                <sequence>
+                    <!-- Capture policy fields before the DS call replaces the payload -->
+                    <property name="policyId" expression="json-eval($.policy_id)" scope="default"/>
+                    <property name="nextDueDate" expression="json-eval($.next_due_date)" scope="default"/>
+
+                    <!-- Get latest payment for the current policy -->
+                    <dataServiceCall serviceName="InsuranceDataBase">
+                        <source type="inline"/>
+                        <operations type="single">
+                            <operation name="getPolicyPayments">
+                                <param name="policy_id" expression="get-property('policyId')"/>
+                            </operation>
+                        </operations>
+                        <target type="body"/>
+                    </dataServiceCall>
+
+                    <!-- Set the iteration payload to the SMS message string.
+                         The foreach collects this from every iteration into vars.messages. -->
+                    <filter xpath="${exists(payload.policy_payments.payment)}">
+                        <then>
+                            <payloadFactory media-type="json">
+                                <format>"Your last payment of Rs.${payload.policy_payments.payment.amount} received on ${payload.policy_payments.payment.tran_date} to the contract number ${props.synapse.policyId} and the Next due date is ${props.synapse.nextDueDate}."</format>
+                            </payloadFactory>
+                        </then>
+                        <else>
+                            <payloadFactory media-type="json">
+                                <format>"No payment details found for policy ${props.synapse.policyId}."</format>
+                            </payloadFactory>
+                        </else>
+                    </filter>
+                </sequence>
+            </foreach>
+
+            <!-- Build final success response; vars.messages is the JSON array built by foreach -->
+            <payloadFactory media-type="json">
+                <format>
+                    {
+                        "status": "success",
+                        "messages": ${vars.messages}
+                    }
+                </format>
+            </payloadFactory>
+            <respond/>
+        </inSequence>
+        <faultSequence>
+            <log category="ERROR">
+                <message>Error in MissedCallHandlerAPI: ${props.synapse.ERROR_MESSAGE}</message>
+            </log>
+            <payloadFactory media-type="json">
+                <format>
+                    {
+                        "status": "error",
+                        "message": "An unexpected error occurred while processing the request."
+                    }
+                </format>
+            </payloadFactory>
+            <respond/>
+        </faultSequence>
+    </resource>
+</api>
