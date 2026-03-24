@@ -7,7 +7,6 @@
             <log category="INFO">
                 <message>Missed call received from: ${payload.mobileNo}</message>
             </log>
-
             <!-- Get customer by mobile number -->
             <dataServiceCall serviceName="InsuranceDataBase">
                 <source type="inline"/>
@@ -18,7 +17,6 @@
                 </operations>
                 <target type="body"/>
             </dataServiceCall>
-
             <!-- If mobile not registered return failure response -->
             <filter xpath="${not(exists(payload.customers.customer))}">
                 <then>
@@ -34,13 +32,11 @@
                     <respond/>
                 </then>
             </filter>
-
             <!-- Store customer ID as property for dataServiceCall -->
             <property name="customerId" expression="${payload.customers.customer.customer_id}" scope="default"/>
             <log category="INFO">
                 <message>Customer found - ID: ${payload.customers.customer.customer_id}</message>
             </log>
-
             <!-- Get active policies by customer ID -->
             <dataServiceCall serviceName="InsuranceDataBase">
                 <source type="inline"/>
@@ -51,7 +47,6 @@
                 </operations>
                 <target type="body"/>
             </dataServiceCall>
-
             <!-- If no active policies found, return failure response -->
             <filter xpath="${not(exists(payload.policies.policy))}">
                 <then>
@@ -67,7 +62,6 @@
                     <respond/>
                 </then>
             </filter>
-
             <!-- Normalise policies to always be a JSON array in the payload body -->
             <filter xpath="${isArray(payload.policies.policy)}">
                 <then>
@@ -81,14 +75,12 @@
                     </payloadFactory>
                 </else>
             </filter>
-
             <!-- For each policy retrieve the latest payment and build the SMS message-->
             <foreach collection="${payload.policies}" parallel-execution="false" update-original="false" target-variable="messages" result-content-type="JSON" continue-without-aggregation="false">
                 <sequence>
                     <!-- Capture policy fields before the DS call replaces the payload -->
                     <property name="policyId" expression="${payload.policy_id}" scope="default"/>
                     <property name="nextDueDate" expression="${payload.next_due_date}" scope="default"/>
-
                     <!-- Get latest payment for the current policy -->
                     <dataServiceCall serviceName="InsuranceDataBase">
                         <source type="inline"/>
@@ -99,7 +91,6 @@
                         </operations>
                         <target type="body"/>
                     </dataServiceCall>
-
                     <!-- Set the iteration payload to the SMS message string.-->
                     <filter xpath="${exists(payload.policy_payments.payment)}">
                         <then>
@@ -115,13 +106,12 @@
                     </filter>
                 </sequence>
             </foreach>
-
             <!-- Build final success response-->
             <payloadFactory media-type="json">
                 <format>
                     {
-                        "status": "success",
-                        "messages": ${vars.messages}
+                    "status": "success",
+                    "messages": ${vars.messages}
                     }
                 </format>
             </payloadFactory>
@@ -134,8 +124,8 @@
             <payloadFactory media-type="json">
                 <format>
                     {
-                        "status": "error",
-                        "message": "An unexpected error occurred while processing the request."
+                    "status": "error",
+                    "message": "An unexpected error occurred while processing the request."
                     }
                 </format>
             </payloadFactory>
