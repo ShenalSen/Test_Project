@@ -21,7 +21,7 @@
             <filter xpath="${not(exists(payload.customers.customer))}">
                 <then>
                     <log category="INFO">
-                        <message>Mobile number not registered: ${vars.mobileNo}</message>
+                        <message>Mobile number not registered: ${props.synapse.mobileNo}</message>
                     </log>
                     <payloadFactory media-type="json" template-type="default">
                         <format>{
@@ -51,7 +51,7 @@
             <filter xpath="${not(exists(payload.policies.policy))}">
                 <then>
                     <log category="INFO">
-                        <message>No active policies found for customer: ${vars.customerId}</message>
+                        <message>No active policies found for customer: ${props.synapse.customerId}</message>
                     </log>
                     <payloadFactory media-type="json" template-type="default">
                         <format>{
@@ -95,12 +95,12 @@
                     <filter xpath="${exists(payload.policy_payments.payment)}">
                         <then>
                             <payloadFactory media-type="json">
-                                <format>"Your last payment of Rs.${payload.policy_payments.payment.amount} received on ${payload.policy_payments.payment.tran_date} to the contract number ${vars.policyId} and the Next due date is ${vars.nextDueDate}."</format>
+                                <format>"Your last payment of Rs.${payload.policy_payments.payment.amount} received on ${payload.policy_payments.payment.tran_date} to the contract number ${props.synapse.policyId} and the Next due date is ${props.synapse.nextDueDate}."</format>
                             </payloadFactory>
                         </then>
                         <else>
                             <payloadFactory media-type="json">
-                                <format>"No payment details found for policy ${vars.policyId}."</format>
+                                <format>"No payment details found for policy ${props.synapse.policyId}."</format>
                             </payloadFactory>
                         </else>
                     </filter>
