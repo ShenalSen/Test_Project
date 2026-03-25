@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<localEntry key="gmailConnection" xmlns="http://ws.apache.org/ns/synapse">
+  <email.init>
+    <connectionType>SMTPS</connectionType>
+    <host>smtp.gmail.com</host>
+    <port>465</port>
+    <username>insurancecompany413@gmail.com</username>
+    <password>hfzj rnmz ahuz onag</password>
+    <requireTLS/>
+    <checkServerIdentity/>
+    <name>gmailConnection</name>
+  </email.init>
+</localEntry>

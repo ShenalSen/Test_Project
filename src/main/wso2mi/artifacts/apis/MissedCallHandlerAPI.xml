@@ -2,6 +2,8 @@
 <api context="/api/v1" name="MissedCallHandlerAPI" xmlns="http://ws.apache.org/ns/synapse">
     <resource methods="POST" uri-template="/missed-call-handler">
         <inSequence>
+            <variable name="emailFrom" type="STRING" value="shenal.unc555@gmail.com"/>
+            <variable name="emailTo" expression="${payload.email}" type="STRING"/>
             <!-- Extract mobile number from request payload -->
             <property name="mobileNo" expression="${payload.mobileNo}" scope="default"/>
             <log category="INFO">
@@ -20,7 +22,7 @@
             <!-- If mobile not registered return failure response -->
             <filter xpath="${not(exists(payload.customers.customer))}">
                 <then>
-                    <log category="INFO">
+                    <log category="WARN" logMessageID="false" logFullPayload="false">
                         <message>Mobile number not registered: ${props.synapse.mobileNo}</message>
                     </log>
                     <payloadFactory media-type="json" template-type="default">
@@ -29,6 +31,23 @@
                             "message": "Please register for this service by dialing 07******** or visit the nearest branch."
                             }</format>
                     </payloadFactory>
+                    <email.send configKey="gmailConnection">
+                        <from>{${vars.emailFrom}}</from>
+                        <personalName></personalName>
+                        <to>{${vars.emailTo}}</to>
+                        <cc></cc>
+                        <bcc></bcc>
+                        <replyTo></replyTo>
+                        <subject>Insurance Service Notification</subject>
+                        <content>${payload}</content>
+                        <contentType>text/html</contentType>
+                        <encoding>UTF-8</encoding>
+                        <attachments></attachments>
+                        <inlineImages>[]</inlineImages>
+                        <contentTransferEncoding>Base64</contentTransferEncoding>
+                        <responseVariable>email_send_1</responseVariable>
+                        <overwriteBody>true</overwriteBody>
+                    </email.send>
                     <respond/>
                 </then>
             </filter>
@@ -50,7 +69,7 @@
             <!-- If no active policies found, return failure response -->
             <filter xpath="${not(exists(payload.policies.policy))}">
                 <then>
-                    <log category="INFO">
+                    <log category="WARN" logMessageID="false" logFullPayload="false">
                         <message>No active policies found for customer: ${props.synapse.customerId}</message>
                     </log>
                     <payloadFactory media-type="json" template-type="default">
@@ -59,6 +78,23 @@
                             "message": "You have no active policies with Company. Please dial 07******** for more information or visit the nearest branch."
                             }</format>
                     </payloadFactory>
+                    <email.send configKey="gmailConnection">
+                        <from>{${vars.emailFrom}}</from>
+                        <personalName></personalName>
+                        <to>{${vars.emailTo}}</to>
+                        <cc></cc>
+                        <bcc></bcc>
+                        <replyTo></replyTo>
+                        <subject>Insurance Service Notification</subject>
+                        <content>${payload}</content>
+                        <contentType>text/html</contentType>
+                        <encoding>UTF-8</encoding>
+                        <attachments></attachments>
+                        <inlineImages>[]</inlineImages>
+                        <contentTransferEncoding>Base64</contentTransferEncoding>
+                        <responseVariable>email_send_1</responseVariable>
+                        <overwriteBody>true</overwriteBody>
+                    </email.send>
                     <respond/>
                 </then>
             </filter>
@@ -115,6 +151,23 @@
                     }
                 </format>
             </payloadFactory>
+            <email.send configKey="gmailConnection">
+                <from>{${vars.emailFrom}}</from>
+                <personalName></personalName>
+                <to>{${vars.emailTo}}</to>
+                <cc></cc>
+                <bcc></bcc>
+                <replyTo></replyTo>
+                <subject>Insurance Service Notification</subject>
+                <content>${payload}</content>
+                <contentType>text/html</contentType>
+                <encoding>UTF-8</encoding>
+                <attachments></attachments>
+                <inlineImages>[]</inlineImages>
+                <contentTransferEncoding>Base64</contentTransferEncoding>
+                <responseVariable>email_send_1</responseVariable>
+                <overwriteBody>true</overwriteBody>
+            </email.send>
             <respond/>
         </inSequence>
         <faultSequence>
