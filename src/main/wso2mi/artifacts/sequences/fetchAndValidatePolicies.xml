@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence name="fetchAndValidatePolicies" xmlns="http://ws.apache.org/ns/synapse">
+    <!-- Bridge variable to property for dataServiceCall param compatibility -->
+    <property name="customerId" expression="${vars.customerId}" scope="default"/>
+    <!-- Get active policies by customer ID -->
+    <dataServiceCall serviceName="InsuranceDataBase">
+        <source type="inline"/>
+        <operations type="single">
+            <operation name="getPolicyByCustomerId">
+                <param name="customer_id" expression="get-property('customerId')"/>
+            </operation>
+        </operations>
+        <target type="body"/>
+    </dataServiceCall>
+    <!-- Check policy existence normalize and continue if found-->
+    <filter xpath="${exists(payload.policies.policy)}">
+        <then>
+            <!-- Normalise policies to always be a JSON array -->
+            <filter xpath="${isArray(payload.policies.policy)}">
+                <then>
+                    <payloadFactory media-type="json">
+                        <format>{"policies": ${payload.policies.policy}}</format>
+                    </payloadFactory>
+                </then>
+                <else>
+                    <payloadFactory media-type="json">
+                        <format>{"policies": [${payload.policies.policy}]}</format>
+                    </payloadFactory>
+                </else>
+            </filter>
+        </then>
+        <else>
+            <log category="WARN">
+                <message>No active policies found for customer: ${vars.customerId}</message>
+            </log>
+            <payloadFactory media-type="json" template-type="default">
+                <format>{
+                    "status": "failed",
+                    "message": "You have no active policies with Company. Please dial 07******** for more information or visit the nearest branch."
+                    }</format>
+            </payloadFactory>
+            <sequence key="sendNotificationEmail"/>
+            <respond/>
+        </else>
+    </filter>
+</sequence>
