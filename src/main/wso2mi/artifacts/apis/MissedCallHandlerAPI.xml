@@ -20,12 +20,13 @@
             </foreach>
             <!-- Build final success response -->
             <payloadFactory media-type="json">
-                <format>
-                    {
-                    "status": "success",
-                    "messages": ${vars.messages}
-                    }
-                </format>
+                <format>{"messages": ${vars.messages}}</format>
+            </payloadFactory>
+            <!-- Build HTML formatted email body -->
+            <payloadFactory media-type="json" template-type="freemarker">
+                <format><![CDATA[{
+"htmlBody": "<html><body><ul style=\"line-height:2;\"><#list payload.messages as msg><li>${msg}</li></#list></ul></body></html>"
+}]]>           </format>
             </payloadFactory>
             <sequence key="sendNotificationEmail"/>
             <respond/>
